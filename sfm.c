@@ -1179,12 +1179,8 @@ delete_entry(const Arg *arg)
 static void
 move_bottom(const Arg *arg)
 {
-	current_pane->current_index = current_pane->entry_count - 1;
-	current_pane->start_index = current_pane->entry_count - (term.rows - 2);
-	if (current_pane->start_index < 0) {
-		current_pane->start_index = 0;
-	}
-	update_screen();
+	move_cursor(&(Arg) { .i = current_pane->entry_count -
+			current_pane->current_index - 1 });
 }
 
 static void
@@ -1223,6 +1219,31 @@ update_entry(Pane *pane, int index)
 }
 
 static void
+render_cursor_move(const int new_start_index, const int old_index)
+{
+	if (new_start_index != current_pane->start_index) {
+		update_screen();
+		return;
+	}
+	// Update only the necessary entries
+	if (old_index == current_pane->current_index)
+		return;
+	if (mode == VisualMode) {
+		if(old_index < current_pane->current_index)
+			for (int i = old_index;
+				i <= current_pane->current_index; i++)
+				update_entry(current_pane, i);
+		else
+			for (int i = old_index;
+				i >= current_pane->current_index; i--)
+				update_entry(current_pane, i);
+	} else {
+		update_entry(current_pane, old_index);
+		update_entry(current_pane, current_pane->current_index);
+	}
+}
+
+static void
 move_cursor(const Arg *arg)
 {
 	int new_start_index;
@@ -1249,26 +1270,23 @@ move_cursor(const Arg *arg)
 			current_pane->current_index - (term.rows - 3);
 	}
 
-	if (new_start_index != current_pane->start_index) {
-		update_screen();
-	} else {
-		// Update only the necessary entries
-		if (old_index != current_pane->current_index) {
-			update_entry(current_pane, old_index);
-			update_entry(current_pane, current_pane->current_index);
-		}
+	if (mode == VisualMode){
+		if(old_index < current_pane->current_index)
+			for (int i = old_index + 1;
+				i <= current_pane->current_index; i++)
+				select_entry(&current_pane->entries[i], Select);
+		else if(old_index > current_pane->current_index)
+			for (int i = old_index - 1;
+				i >= current_pane->current_index; i--)
+				select_entry(&current_pane->entries[i], Select);
 	}
-
-	if (mode == VisualMode)
-		select_cur_entry(&(Arg) { .i = Select });
+	render_cursor_move(new_start_index, old_index);
 }
 
 static void
 move_top(const Arg *arg)
 {
-	current_pane->current_index = 0;
-	current_pane->start_index = 0;
-	update_screen();
+	move_cursor(&(Arg) { .i = -current_pane->current_index });
 }
 
 static void
@@ -1828,20 +1846,10 @@ move_to_match(const Arg *arg)
 			current_pane->matched_count;
 	}
 
-	current_pane->current_index =
-		current_pane->matched_indices[current_pane->current_match];
-
-	if (current_pane->current_index < current_pane->start_index ||
-		current_pane->current_index >=
-			current_pane->start_index + term.rows - 2) {
-		current_pane->start_index =
-			current_pane->current_index - (term.rows - 2) / 2;
-		if (current_pane->start_index < 0) {
-			current_pane->start_index = 0;
-		}
-	}
-
-	update_screen();
+	move_cursor(&(Arg) {
+		.i = current_pane
+				->matched_indices[current_pane->current_match] -
+			current_pane->current_index });
 }
 
 int
