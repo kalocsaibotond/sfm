@@ -201,6 +201,8 @@ static void delete_entry(const Arg *);
 static void move_bottom(const Arg *);
 static void render_cursor_move(const int, const int);
 static void move_cursor(const Arg *);
+static void move_half_pane(const Arg *arg);
+static void move_full_pane(const Arg *arg);
 static void move_top(const Arg *);
 static void move_entries(const Arg *);
 static void open_entry(const Arg *);

@@ -1284,6 +1284,25 @@ move_cursor(const Arg *arg)
 }
 
 static void
+move_half_pane(const Arg *arg)
+{
+	if(0 < arg->i)
+		move_cursor(&(Arg) { .i = (term.rows - 2) / 2 });
+	else
+		move_cursor(&(Arg) { .i = -(term.rows - 2) / 2 });
+}
+
+static void
+move_full_pane(const Arg *arg)
+{
+	if(0 < arg->i)
+		move_cursor(&(Arg) { .i = (term.rows - 2) });
+	else
+		move_cursor(&(Arg) { .i = -(term.rows - 2) });
+}
+
+
+static void
 move_top(const Arg *arg)
 {
 	move_cursor(&(Arg) { .i = -current_pane->current_index });
