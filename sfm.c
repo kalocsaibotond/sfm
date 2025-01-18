@@ -1284,6 +1284,30 @@ move_cursor(const Arg *arg)
 }
 
 static void
+jump_cursor(const Arg *arg)
+{
+	int jump_target;
+	char jump_input[NAME_MAX];
+
+	if(0 < arg->i){
+		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor down: "))
+			return;
+		jump_target = strtol(jump_input, NULL, 10);
+	} else if (0 == arg->i){
+		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor to: "))
+			return;
+		jump_target = strtol(jump_input, NULL, 10)
+			- current_pane->current_index - 1;
+	} else {
+		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor up: "))
+			return;
+		jump_target = -strtol(jump_input, NULL, 10);
+	}
+	move_cursor(&(Arg) { .i = jump_target });
+	display_entry_details();
+}
+
+static void
 move_half_pane(const Arg *arg)
 {
 	if(0 < arg->i)
