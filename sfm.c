@@ -76,6 +76,7 @@ static pid_t fork_pid, main_pid;
 static char **selected_entries = NULL;
 static int selected_count = 0;
 static int mode;
+static int move_cursor_render = 1;
 
 static void
 log_to_file(const char *func, int line, const char *format, ...)
@@ -1280,7 +1281,105 @@ move_cursor(const Arg *arg)
 				i >= current_pane->current_index; i--)
 				select_entry(&current_pane->entries[i], Select);
 	}
-	render_cursor_move(new_start_index, old_index);
+	if (move_cursor_render)
+		render_cursor_move(new_start_index, old_index);
+}
+
+static void
+show_entry_nums_down(void)
+{
+	int entry_number_len;
+	int entry_index;
+	char entry_name_tmp[NAME_MAX];
+	
+	if (current_pane->entries == NULL)
+		return;
+	for (entry_index = current_pane->start_index;
+		entry_index < current_pane->start_index + term.rows - 2 &&
+		entry_index < current_pane->entry_count;
+		entry_index++) {
+		strncpy(entry_name_tmp,
+			current_pane->entries[entry_index].name,
+			NAME_MAX
+		);
+		entry_number_len = snprintf(
+			current_pane->entries[entry_index].name, NAME_MAX,
+			"%d ", entry_index - current_pane->current_index);
+		if (0 < entry_number_len){
+			strncpy(current_pane->entries[entry_index].name +
+				entry_number_len,
+				entry_name_tmp, NAME_MAX - entry_number_len);
+			update_entry(current_pane, entry_index);
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		} else {
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		}
+	}
+}
+
+static void
+jump_cursor_down(const Arg *arg)
+{
+	int jump_target;
+	char jump_input[NAME_MAX];
+
+	if(0 < arg->i)
+		show_entry_nums_down();
+	if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor down: "))
+		goto cancel_jump_exit;
+	jump_target = strtol(jump_input, NULL, 10);
+	
+	if(0 < arg->i){
+		move_cursor_render = 0;
+		move_cursor(&(Arg) { .i = jump_target });
+		move_cursor_render = 1;
+		update_screen();
+	} else {
+		move_cursor(&(Arg) { .i = jump_target });
+		display_entry_details();
+	}
+	return;
+cancel_jump_exit:
+	if(0 < arg->i)
+		update_screen();
+	else
+		display_entry_details();
+}
+
+static void
+show_entry_nums(void)
+{
+	int entry_number_len;
+	int entry_index;
+	char entry_name_tmp[NAME_MAX];
+	
+	if (current_pane->entries == NULL)
+		return;
+	for (entry_index = current_pane->start_index;
+		entry_index < current_pane->start_index + term.rows - 2 &&
+		entry_index < current_pane->entry_count;
+		entry_index++) {
+		strncpy(entry_name_tmp,
+			current_pane->entries[entry_index].name,
+			NAME_MAX
+		);
+		entry_number_len = snprintf(
+			current_pane->entries[entry_index].name, NAME_MAX,
+			"%d ", entry_index + 1);
+		if (0 < entry_number_len){
+			strncpy(current_pane->entries[entry_index].name +
+				entry_number_len,
+				entry_name_tmp, NAME_MAX - entry_number_len);
+			update_entry(current_pane, entry_index);
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		} else {
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		}
+	}
 }
 
 static void
@@ -1289,22 +1388,91 @@ jump_cursor(const Arg *arg)
 	int jump_target;
 	char jump_input[NAME_MAX];
 
+	if(0 < arg->i)
+		show_entry_nums();
+	if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor to: "))
+		goto cancel_jump_exit;
+	jump_target = strtol(jump_input, NULL, 10)
+		- current_pane->current_index - 1;
+	
 	if(0 < arg->i){
-		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor down: "))
-			return;
-		jump_target = strtol(jump_input, NULL, 10);
-	} else if (0 == arg->i){
-		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor to: "))
-			return;
-		jump_target = strtol(jump_input, NULL, 10)
-			- current_pane->current_index - 1;
+		move_cursor_render = 0;
+		move_cursor(&(Arg) { .i = jump_target });
+		move_cursor_render = 1;
+		update_screen();
 	} else {
-		if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor up: "))
-			return;
-		jump_target = -strtol(jump_input, NULL, 10);
+		move_cursor(&(Arg) { .i = jump_target });
+		display_entry_details();
 	}
-	move_cursor(&(Arg) { .i = jump_target });
-	display_entry_details();
+	return;
+cancel_jump_exit:
+	if(0 < arg->i)
+		update_screen();
+	else
+		display_entry_details();
+}
+
+static void
+show_entry_nums_up(void)
+{
+	int entry_number_len;
+	int entry_index;
+	char entry_name_tmp[NAME_MAX];
+	
+	if (current_pane->entries == NULL)
+		return;
+	for (entry_index = current_pane->start_index;
+		entry_index < current_pane->start_index + term.rows - 2 &&
+		entry_index < current_pane->entry_count;
+		entry_index++) {
+		strncpy(entry_name_tmp,
+			current_pane->entries[entry_index].name,
+			NAME_MAX
+		);
+		entry_number_len = snprintf(
+			current_pane->entries[entry_index].name, NAME_MAX,
+			"%d ", current_pane->current_index - entry_index);
+		if (0 < entry_number_len){
+			strncpy(current_pane->entries[entry_index].name +
+				entry_number_len,
+				entry_name_tmp, NAME_MAX - entry_number_len);
+			update_entry(current_pane, entry_index);
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		} else {
+			strncpy(current_pane->entries[entry_index].name,
+				entry_name_tmp, NAME_MAX);
+		}
+	}
+}
+
+static void
+jump_cursor_up(const Arg *arg)
+{
+	int jump_target;
+	char jump_input[NAME_MAX];
+
+	if(0 < arg->i)
+		show_entry_nums_up();
+	if(0 != get_user_input(jump_input, NAME_MAX, "jump cursor up: "))
+		goto cancel_jump_exit;
+	jump_target = -strtol(jump_input, NULL, 10);
+	
+	if(0 < arg->i){
+		move_cursor_render = 0;
+		move_cursor(&(Arg) { .i = jump_target });
+		move_cursor_render = 1;
+		update_screen();
+	} else {
+		move_cursor(&(Arg) { .i = jump_target });
+		display_entry_details();
+	}
+	return;
+cancel_jump_exit:
+	if(0 < arg->i)
+		update_screen();
+	else
+		display_entry_details();
 }
 
 static void
